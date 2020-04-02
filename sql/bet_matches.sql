@@ -38,4 +38,3 @@ CREATE INDEX tx1_address_id  ON bet_matches (tx1_address_id);
 CREATE INDEX tx0_address_id  ON bet_matches (tx0_address_id);
 CREATE INDEX feed_address_id ON bet_matches (feed_address_id);
 
--- ALTER TABLE bet_matches MODIFY initial_value INTEGER;

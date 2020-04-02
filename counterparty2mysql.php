@@ -6,22 +6,26 @@
  * Script to handle parsing counterparty data into mysql database
  * 
  * Command line arguments :
- * --testnet  Load data from testnet
- * --regtest  Load data from regtest
- * --block=#  Load data for given block
- * --single   Load single block
+ * --testnet    Load data from testnet
+ * --regtest    Load data from regtest
+ * --block=#    Load data for given block
+ * --rollback=# Rollback data to a given block
+ * --single     Load single block
+ * --silent     Fail silently on insert errors
  ********************************************************************/
 
 // Hide all but errors
 error_reporting(E_ERROR);
 
 // Parse in the command line args and set some flags based on them
-$args    = getopt("", array("testnet::", "regtest::", "block::", "single::", "verbose::"));
-$testnet = (isset($args['testnet'])) ? true : false;
-$regtest = (isset($args['regtest'])) ? true : false;
-$single  = (isset($args['single'])) ? true : false;  
-$runtype = ($regtest) ? 'regtest' : (($testnet) ? 'testnet' : 'mainnet');
-$block   = (is_numeric($args['block'])) ? intval($args['block']) : false;
+$args     = getopt("", array("testnet::", "regtest::", "block::", "rollback::", "single::","silent::", "verbose::"));
+$testnet  = (isset($args['testnet'])) ? true : false;
+$regtest  = (isset($args['regtest'])) ? true : false;
+$single   = (isset($args['single'])) ? true : false;  
+$silent   = (isset($args['silent'])) ? true : false; // Flag to indicate if we should silently fail on insert errors
+$runtype  = ($regtest) ? 'regtest' : (($testnet) ? 'testnet' : 'mainnet');
+$rollback = (is_numeric($args['rollback'])) ? intval($args['rollback']) : false;
+$block    = (is_numeric($args['block'])) ? intval($args['block']) : false;
 
 // Load config (only after runtype is defined)
 require_once(__DIR__ . '/includes/config.php');
@@ -37,6 +41,50 @@ initCP(CP_HOST, CP_USER, CP_PASS, true);
 
 // Create a lock file, and bail if we detect an instance is already running
 createLockFile();
+
+// Handle rollbacks
+if($rollback){
+    $block_index = $mysqli->real_escape_string($rollback);
+    $tables = [
+        'bets',
+        'bet_expirations', 
+        'bet_match_expirations',
+        'bet_match_resolutions',
+        'bet_matches',
+        'blocks',
+        'broadcasts',
+        'btcpays',
+        'burns',
+        'cancels',
+        'contracts',
+        'credits',
+        'debits',
+        'destructions',
+        'dispensers',
+        'dispenses',
+        'dividends',
+        'executions',
+        'issuances',
+        'messages',
+        'orders',
+        'order_expirations',
+        'order_match_expirations',
+        'order_matches',
+        'rps',
+        'rps_expirations',
+        'rps_match_expirations',
+        'rps_matches',
+        'rpsresolves',
+        'sends',
+        'sweeps'
+    ];
+    foreach($tables as $table){
+        $results = $mysqli->query("DELETE FROM {$table} WHERE block_index>{$block_index}");
+        if(!$results)
+            byeLog("Error while trying to rollback {$table} table to block {$block_index}");
+    }
+    byeLog("Rollback to block {$block_index} complete.");
+}
 
 // If no block given, load last block from state file, or use first block with CP tx
 if(!$block){
@@ -67,7 +115,7 @@ while($block <= $current){
     $assets       = array(); // array of asset id mappings
     $addresses    = array(); // array of address id mappings
     $transactions = array(); // array of transaction id mappings
-    $contracts    = array(); // arrray of contract id mappings
+    $contracts    = array(); // array of contract id mappings
 
     // Get list of messages (updates to counterparty tables)
     $messages = $counterparty->execute('get_messages', array('block_index' => $block));
@@ -96,7 +144,8 @@ while($block <= $current){
         // Create record in tx_index (so we can map tx_index to tx_hash and table with data)
         if(isset($obj->tx_index) && isset($transactions[$obj->tx_hash]))
             createTxIndex($obj->tx_index, $msg->category, $transactions[$obj->tx_hash]);
-
+        // Create record in the messages table (so we can review the CP messages as needed)
+        createMessage($message);
     }
 
     // Loop through addresses and update any asset balances
@@ -114,6 +163,7 @@ while($block <= $current){
         // Build out array of fields and values
         $fields = array();
         $values = array();
+        $fldmap = array();
         foreach($bindings as $field => $value){
             $ignore = false;
             // swap asset name for id
@@ -170,6 +220,12 @@ while($block <= $current){
             if($table=='sends'){
                 if($field=='quantity')
                     $value = intval($value);
+                if($field=='msg_index')
+                    $ignore = true;
+            }
+            if($table=='dispensers'){
+                if($field=='prev_status')
+                    $ignore = true;
             }
             // EVM fields
             if($field=='gasprice')
@@ -189,6 +245,7 @@ while($block <= $current){
             // Add final field and value values to arrays
             array_push($fields, $field);
             array_push($values, $value);
+            $fldmap[$field] = $value;
         }
 
         // Change command to 'replace'
@@ -220,8 +277,6 @@ while($block <= $current){
 
         // Handle 'insert' commands
         if($command=='insert'){
-            // Special flag used to manually get past issues with occasional duplicate messages in messages table
-            $skip = false;
             // Check if this record already exists
             $sql = "SELECT * FROM {$table} WHERE";
 
@@ -243,12 +298,15 @@ while($block <= $current){
                 if($results->num_rows==0){
                     $sql = "INSERT INTO {$table} (" . implode(",", $fields)  . ") values ('" . implode("', '", $values) . "') ON DUPLICATE KEY UPDATE $sqlUpdate";
                     $results = $mysqli->query($sql);
-                    if(!$results && !$skip)
+                    if(!$results && !$silent)
                         byeLog('Error while trying to create record in ' . $table . ' : ' . $sql);
                 }
             } else {
                 byeLog('Error while trying to check if record already exists in ' . $table . ' : ' . $sql);
             }
+            // Handle creating a record in the dispenses table to link a dispense directly to a dispenser
+            if($table=='credits' && $values[array_search('calling_function', $fields)]=='dispense')
+                createDispense($bindings->block_index, $bindings->asset, $bindings->event);
         }
 
         // Handle 'update' commands
@@ -257,7 +315,9 @@ while($block <= $current){
             $where = "";
             foreach($fields as $index => $field){
                 // Update bets and orders records using tx_hash
-                if(in_array($table,array('orders','bets')) && $field=='tx_hash_id'){
+                if(in_array($table,array('orders','bets','dispensers')) && $field=='tx_hash_id'){
+                    if($where!="")
+                        $where .= " AND ";
                     $where .= " tx_hash_id='{$values[$index]}'";
                 // Update *_matches tables using id field
                 } else if(in_array($table,array('order_matches','bet_matches','rps_matches')) && 
@@ -269,6 +329,13 @@ while($block <= $current){
                 // Update nonces table using address_id
                 } else if($table=='nonces' && $field=='address_id'){
                     $where .= " {$field}='{$values[$index]}'";
+                // Skip updating the block_index on dispenser (so we keep the original block_index where the dispenser was created/updated)
+                } else if($table=='dispensers' && in_array($field, array('block_index','status'))){
+                    if($field=='block_index')
+                        continue;
+                    if($field=='status' && $values[$index]==10)
+                        $sql   .= " status='10',";
+                    $where = " source_id='{$fldmap['source_id']}' AND asset_id='{$fldmap['asset_id']}'";
                 } else {
                     $sql .= " {$field}='{$values[$index]}',";
                 }
@@ -289,6 +356,44 @@ while($block <= $current){
     // Loop through assets and update XCP price 
     foreach($assets as $asset =>$id)
         updateAssetPrice($asset);
+
+    // array of markets
+    $markets = array(); 
+
+    // Loop through messages and detect any DEX market changes
+    foreach($messages as $message){
+        $msg = (object) $message;
+        $obj = json_decode($msg->bindings);
+        $market = false;
+        if($msg->category='orders'){
+            $sql = "SELECT
+                        a1.asset as asset1,
+                        a2.asset as asset2
+                    FROM
+                        orders o,
+                        assets a1,
+                        assets a2,
+                        index_transactions t
+                    WHERE
+                        t.id=o.tx_hash_id AND
+                        a1.id=o.give_asset_id AND
+                        a2.id=o.get_asset_id AND
+                        t.hash='{$obj->tx_hash}'";
+            $results = $mysqli->query($sql);
+            if($results){
+                if($results->num_rows){
+                    $row = (object) $results->fetch_assoc();
+                    if(!$markets[$row->asset2 . '|' . $row->asset1])
+                        $markets[$row->asset1 . '|' . $row->asset2] = 1;
+                }
+            }
+        }
+    }
+    // If we have any market changes, update the markets
+    if(count($markets)){
+        $block_24hr = get24HourBlockIndex();
+        createUpdateMarkets($markets);
+    }
 
     // Report time to process block
     $time = $timer->finish();

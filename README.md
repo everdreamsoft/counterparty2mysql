@@ -15,7 +15,9 @@ Database Customizations
 - create assets table with up to date summary information
 - create balances table to track address/asset balance information
 - create blocks table and index transaction hashes
-- create index_tx to track tx_index/type information
+- create index_tx table to track tx_index/type information
+- create dispenses table to track dispenser dispenses
+- create markets table to track decentralized exchange (DEX) market info
 
 Setup
 ---
@@ -28,16 +30,18 @@ cat sql/*.sql | mysql Counterparty_Testnet
 
 Bootstrap Information
 ---
-- [Counterparty.sql.gz](bootstrap/Counterparty.sql.gz) (Mainnet Block # 570,061)
-- [Counterparty_Testnet.sql.gz](bootstrap/Counterparty_Testnet.sql.gz) (Testnet Block # 1,487,303)
+- [Counterparty.sql.gz](bootstrap/Counterparty.sql.gz) (Mainnet Block # 620,216)
+- [Counterparty_Testnet.sql.gz](bootstrap/Counterparty_Testnet.sql.gz) (Testnet Block # 1,667,702)
 
 Command line arguments 
 ---
 ```
---testnet  Load testnet data
---regtest  Load regtest data
---block=#  Load data for given block
---single   Load single block
+--testnet    Load testnet data
+--regtest    Load regtest data
+--block=#    Load data for given block
+--single     Load single block
+--rollback=# Rollback data to a given block
+--silent     Fail silently on insert errors
 ```
 
 Database Information
@@ -56,6 +60,7 @@ Database Information
 - [credits](sql/credits.sql)
 - [debits](sql/debits.sql)
 - [destructions](sql/destructions.sql)
+- [dispensers](sql/dispensers.sql)
 - [dividends](sql/dividends.sql)
 - [issuances](sql/issuances.sql)
 - [order_expirations](sql/order_expirations.sql)
@@ -79,6 +84,8 @@ Database Information
 - [assets](sql/assets.sql)
 - [balances](sql/balances.sql)
 - [blocks](sql/blocks.sql)
+- [dispenses](sql/dispenses.sql)
+- [markets](sql/markets.sql)
 - [index_addresses](sql/index_addresses.sql)
 - [index_contracts](sql/index_contracts.sql)
 - [index_transactions](sql/index_transactions.sql)
