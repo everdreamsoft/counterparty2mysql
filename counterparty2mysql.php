@@ -102,13 +102,19 @@ $fields_address     = array('address', 'bet_hash', 'destination', 'feed_address'
 $fields_transaction = array('event', 'move_random_hash', 'offer_hash', 'order_hash', 'rps_hash', 'tx_hash', 'tx0_hash', 'tx0_move_random_hash', 'tx1_hash', 'tx1_move_random_hash');
 $fields_contract    = array('contract_id');
 
+//$block = 0 ;
+
 // Loop through the blocks until we are current
 while($block <= $current){
     $timer = new Profiler();
     print "processing block {$block}...";
 
+    //database commit
+    databaseBeginTransaction();
+
     // create block record
     createBlock($block);
+
 
     // Define array hold asset/address/tranaction id mappings for this block
     // We want to reset these every block since we use the assets list querying address balances
@@ -410,6 +416,8 @@ while($block <= $current){
 
     // Increase block before next loop
     $block++;
+
+    databaseCommit();
 }    
 
 // Remove the lockfile now that we are done running
