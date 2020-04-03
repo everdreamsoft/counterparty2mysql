@@ -544,7 +544,7 @@ function createMarket($asset1, $asset2){
             return $row['id'];
         } else {
             $asset1_id = getAssetDatabaseId($asset1);
-            $asset2_id = getAssetDatabaseId($asset2); 
+            $asset2_id = getAssetDatabaseId($asset2);
             $results   = $mysqli->query("INSERT INTO markets (asset1_id, asset2_id) values ('{$asset1_id}', '{$asset2_id}')");
             if($results && $mysqli->insert_id){
                 return $mysqli->insert_id;
@@ -797,7 +797,7 @@ function updateMarketInfo( $market_id ){
              (m.forward_asset_id='{$asset2_id}' AND m.backward_asset_id='{$asset1_id}')) AND
             m.status='completed' AND
             m.block_index>='{$block_24hr}'
-        ORDER BY tx1_index DESC";    
+        ORDER BY tx1_index DESC";
         // print $sql;
     $results = $mysqli->query($sql);
     if($results){
@@ -830,7 +830,7 @@ function updateMarketInfo( $market_id ){
         }
     } else {
         byeLog("Error while trying to lookup 24-hour stats");
-    }    
+    }
 
 
     // Calculate price change percentage
@@ -926,6 +926,20 @@ function updateMarketInfo( $market_id ){
         // print "asset1_volume_int : {$asset1_volume_int}\n";
         // print "asset2_volume_int : {$asset2_volume_int}\n";
     }
+
+}
+
+function databaseBeginTransaction(){
+    global $mysqli ;
+
+    $mysqli->query("START TRANSACTION;");
+
+}
+
+function databaseCommit(){
+    global $mysqli ;
+
+    $mysqli->query("COMMIT");
 
 }
 
