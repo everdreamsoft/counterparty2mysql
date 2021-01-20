@@ -65,6 +65,7 @@ if($rollback){
         'dividends',
         'executions',
         'issuances',
+        'index_tx',
         'messages',
         'orders',
         'order_expirations',
@@ -99,7 +100,7 @@ $current = $counterparty->status['last_block']['block_index'];
 // Define array of fields that contain assets, addresses, transactions, and contracts
 $fields_asset       = array('asset', 'backward_asset', 'dividend_asset', 'forward_asset', 'get_asset', 'give_asset');
 $fields_address     = array('address', 'bet_hash', 'destination', 'feed_address', 'issuer', 'source', 'tx0_address', 'tx1_address');
-$fields_transaction = array('event', 'move_random_hash', 'offer_hash', 'order_hash', 'rps_hash', 'tx_hash', 'tx0_hash', 'tx0_move_random_hash', 'tx1_hash', 'tx1_move_random_hash');
+$fields_transaction = array('event', 'move_random_hash', 'offer_hash', 'order_hash', 'rps_hash', 'tx_hash', 'tx0_hash', 'tx0_move_random_hash', 'tx1_hash', 'tx1_move_random_hash', 'dispenser_tx_hash');
 $fields_contract    = array('contract_id');
 
 //$block = 0 ;
@@ -148,8 +149,8 @@ while($block <= $current){
                     $contracts[$value] = createContract($value);
         }
         // Create record in tx_index (so we can map tx_index to tx_hash and table with data)
-        if(isset($obj->tx_index) && isset($transactions[$obj->tx_hash]))
-            createTxIndex($obj->tx_index, $msg->category, $transactions[$obj->tx_hash]);
+        if(isset($obj->tx_index) && isset($obj->block_index) && isset($transactions[$obj->tx_hash]))
+            createTxIndex($obj->tx_index, $obj->block_index, $msg->category, $transactions[$obj->tx_hash]);
         // Create record in the messages table (so we can review the CP messages as needed)
         createMessage($message);
     }
@@ -310,9 +311,6 @@ while($block <= $current){
             } else {
                 byeLog('Error while trying to check if record already exists in ' . $table . ' : ' . $sql);
             }
-            // Handle creating a record in the dispenses table to link a dispense directly to a dispenser
-            if($table=='credits' && $values[array_search('calling_function', $fields)]=='dispense')
-                createDispense($bindings->block_index, $bindings->asset, $bindings->event);
         }
 
         // Handle 'update' commands
