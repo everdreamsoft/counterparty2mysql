@@ -765,11 +765,11 @@ function updateMarketInfo( $market_id ){
     }
 
     // Lookup 'ask' price
-    $sql = "SELECT
+    $sql = "SELECT 
                 o.get_quantity,
                 o.give_quantity,
                 o.tx_index
-            FROM
+            FROM 
                 orders o
             WHERE
                 o.get_asset_id='{$asset2_id}' AND
@@ -806,7 +806,7 @@ function updateMarketInfo( $market_id ){
             m.forward_quantity,
             m.backward_asset_id,
             m.backward_quantity
-        FROM
+        FROM 
             order_matches m
         WHERE
             ((m.forward_asset_id='{$asset1_id}' AND m.backward_asset_id='{$asset2_id}') OR
