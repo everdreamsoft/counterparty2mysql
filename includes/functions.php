@@ -688,8 +688,8 @@ function updateMarketInfo( $market_id ){
             $row = $results->fetch_assoc();
             $forward      = ($row['forward_asset_id']==$asset1_id) ? $row['forward_quantity'] : $row['backward_quantity'];
             $backward     = ($row['forward_asset_id']==$asset1_id) ? $row['backward_quantity'] : $row['forward_quantity'];
-            $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8,'.','') : intval($forward);
-            $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8,'.','') : intval($backward);
+            $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8) : intval($forward);
+            $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8) : intval($backward);
             $price1_last  = bcdiv(number_format($backward_qty,8,'.',''), number_format($forward_qty,8,'.',''),8,'.','');
             $price2_last  = bcdiv(number_format($forward_qty,8,'.',''), number_format($backward_qty,8,'.',''),8,'.','');
         }
@@ -721,8 +721,8 @@ function updateMarketInfo( $market_id ){
             $row = $results->fetch_assoc();
             $forward      = ($row['forward_asset_id']==$asset1_id) ? $row['forward_quantity'] : $row['backward_quantity'];
             $backward     = ($row['forward_asset_id']==$asset1_id) ? $row['backward_quantity'] : $row['forward_quantity'];
-            $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8,'.','') : intval($forward);
-            $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8,'.','') : intval($backward);
+            $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8) : intval($forward);
+            $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8) : intval($backward);
             $price1_24hr  = bcdiv(number_format($backward_qty,8,'.',''), number_format($forward_qty,8,'.',''),8,'.','');
             $price2_24hr  = bcdiv(number_format($forward_qty,8,'.',''), number_format($backward_qty,8,'.',''),8,'.','');
         }
@@ -747,8 +747,8 @@ function updateMarketInfo( $market_id ){
     if($results){
         if($results->num_rows){
             while($row = $results->fetch_assoc()){
-                $give_quantity = ($asset2_divisible) ? bcmul(number_format($row['give_quantity'],8,'.',''), '0.00000001',8,'.','') : intval($row['give_quantity']);
-                $get_quantity  = ($asset1_divisible) ? bcmul(number_format($row['get_quantity'],8,'.',''),  '0.00000001',8,'.','') : intval($row['get_quantity']);
+                $give_quantity = ($asset2_divisible) ? bcmul(number_format($row['give_quantity'],8,'.',''), '0.00000001',8) : intval($row['give_quantity']);
+                $get_quantity  = ($asset1_divisible) ? bcmul(number_format($row['get_quantity'],8,'.',''),  '0.00000001',8) : intval($row['get_quantity']);
                 $price1         = bcdiv(number_format($give_quantity,8,'.',''), number_format($get_quantity,8,'.',''),8,'.','');
                 $price2         = bcdiv(number_format($get_quantity,8,'.',''), number_format($give_quantity,8,'.',''),8,'.','');
                 // print "price1={$price1} price2={$price2} tx={$row['tx_index']}\n";
@@ -781,8 +781,8 @@ function updateMarketInfo( $market_id ){
     if($results){
         if($results->num_rows){
             while($row = $results->fetch_assoc()){
-                $give_quantity = ($asset1_divisible) ? bcmul(number_format($row['give_quantity'],8,'.',''), '0.00000001',8,'.','') : intval($row['give_quantity']);
-                $get_quantity  = ($asset2_divisible) ? bcmul(number_format($row['get_quantity'],8,'.',''),  '0.00000001',8,'.','') : intval($row['get_quantity']);
+                $give_quantity = ($asset1_divisible) ? bcmul(number_format($row['give_quantity'],8,'.',''), '0.00000001',8) : intval($row['give_quantity']);
+                $get_quantity  = ($asset2_divisible) ? bcmul(number_format($row['get_quantity'],8,'.',''),  '0.00000001',8) : intval($row['get_quantity']);
                 $price1        = bcdiv(number_format($get_quantity,8,'.',''), number_format($give_quantity,8,'.',''),8,'.','');
                 $price2        = bcdiv(number_format($give_quantity,8,'.',''), number_format($get_quantity,8,'.',''),8,'.','');
                 // print "price1={$price1} price2={$price2} tx={$row['tx_index']}\n";
@@ -821,8 +821,8 @@ function updateMarketInfo( $market_id ){
             while($row = $results->fetch_assoc()){
                 $forward      = ($row['forward_asset_id']==$asset1_id) ? $row['forward_quantity'] : $row['backward_quantity'];
                 $backward     = ($row['forward_asset_id']==$asset1_id) ? $row['backward_quantity'] : $row['forward_quantity'];
-                $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8,'.','') : intval($forward);
-                $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8,'.','') : intval($backward);
+                $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8) : intval($forward);
+                $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8) : intval($backward);
                 $price1       = bcdiv(number_format($backward_qty,8,'.',''), number_format($forward_qty,8,'.',''),8,'.','');
                 $price2       = bcdiv(number_format($forward_qty,8,'.',''), number_format($backward_qty,8,'.',''),8,'.','');
                 if($price1_high==0 && $price1_low==0){
