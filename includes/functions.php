@@ -673,13 +673,13 @@ function updateMarketInfo( $market_id ){
             m.forward_quantity,
             m.backward_asset_id,
             m.backward_quantity
-        FROM
+        FROM 
             order_matches m
         WHERE
             ((m.forward_asset_id='{$asset1_id}' AND m.backward_asset_id='{$asset2_id}') OR
              (m.forward_asset_id='{$asset2_id}' AND m.backward_asset_id='{$asset1_id}')) AND
             m.status='completed'
-        ORDER BY tx1_index DESC
+        ORDER BY tx1_index DESC 
         LIMIT 1";
     // print $sql;
     $results = $mysqli->query($sql);
