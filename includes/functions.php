@@ -470,7 +470,7 @@ function getAddressBalances($address=null, $asset_list=null){
         $filters  = array(array('field' => 'address', 'op' => '==', 'value' => $address),
                           array('field' => 'asset',   'op' => 'IN', 'value' => $assets));
         $data = $counterparty->execute('get_balances', array('filters' => $filters, 'filterop' => "AND"));
-        if(count($data)){
+        if(!is_null($data) && count($data)){
             $balances = array_merge($balances, $data);
         }
     }
