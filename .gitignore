@@ -1,3 +1,5 @@
 .DS_Store
+/misc/fix/ERRORLOG
+
 bootstrap
 includes/config.php
