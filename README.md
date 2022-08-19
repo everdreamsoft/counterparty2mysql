@@ -30,8 +30,8 @@ cat sql/*.sql | mysql Counterparty_Testnet
 
 Bootstrap Information
 ---
-- [Counterparty.sql.gz](bootstrap/Counterparty.sql.gz) (Mainnet Block # 702,735)
-- [Counterparty_Testnet.sql.gz](bootstrap/Counterparty_Testnet.sql.gz) (Testnet Block # 2,096,832)
+- [Counterparty.sql.gz](bootstrap/Counterparty.sql.gz) (Mainnet Block # 749,050)
+- [Counterparty_Testnet.sql.gz](bootstrap/Counterparty_Testnet.sql.gz) (Testnet Block # 2,315,968)
 
 Command line arguments 
 ---
@@ -91,5 +91,6 @@ Database Information
 - [index_transactions](sql/index_transactions.sql)
 - [index_tx](sql/index_tx.sql)
 - [index_tx_types](sql/index_tx_types.sql)
+- [transactions](sql/transactions.sql)
 
 Helpful? Donate BTC, XCP or any Counterparty asset to 1JDogZS6tQcSxwfxhv6XKKjcyicYA4Feev
