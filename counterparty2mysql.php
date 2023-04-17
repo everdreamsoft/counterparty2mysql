@@ -196,15 +196,19 @@ while($block <= $current){
             foreach($fields_contract as $name)
                 if($field==$name)
                     $value = $contracts[$value];
-            // Remove all characters except alphanumerics, spaces, and characters valid in urls (:/?=;)
-            // Fixes issue where special (unicode) characters in description break SQL queries (temp fix)
+            // Force numeric values on some broadcast values
+            if($table=='broadcasts'){
+                if(in_array($field,array('locked','fee_fraction_int')))
+                    $value = intval($value);
+                if($field=='value' && $value=='')
+                    $value = 0;
+                // Replace 4-byte UTF-8 characters (fixes issue with breaking SQL queries) 
+                if($field=='text')
+                    $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value);
+            }
+            // Replace 4-byte UTF-8 characters (fixes issue with breaking SQL queries) 
             if($field=='description')
-                $value = preg_replace("/[^[:alnum:][:space:]\:\/\.\?\=\&\;]/u", '', $value);
-            // Encode some values to make safe for SQL queries  
-            if($table=='broadcasts' && $field=='text')
-                $value = $mysqli->real_escape_string($value);
-            if($table=='issuances' && $field=='description')
-                $value = $mysqli->real_escape_string($value);
+                $value = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $value);
             // Translate some field names where bindings field names and table field names differ
             if($table=='credits' && $field=='action')
                 $field='calling_function';
@@ -212,12 +216,8 @@ while($block <= $current){
             if($table=='issuances'){
                 if(in_array($field, array('locked','transfer','divisible','callable')) && $value=='')
                     $ignore = true;
-            }
-            // Force numeric values on some broadcast values
-            if($table=='broadcasts'){
-                if(in_array($field,array('locked','fee_fraction_int')))
-                    $value = intval($value);
-                if($field=='value' && $value=='')
+                // Handle issues with unpacking data where all values are empty
+                if(in_array($field, array('call_date','call_price','quantity')) && $value=='')
                     $value = 0;
             }
             // Rock / Paper / Sciscors
@@ -380,7 +380,7 @@ while($block <= $current){
 
     }
 
-    // Loop through assets and update XCP price 
+    // Loop through assets and update BTC & XCP price 
     foreach($assets as $asset =>$id)
         updateAssetPrice($asset);
 

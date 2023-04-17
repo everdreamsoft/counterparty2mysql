@@ -177,7 +177,7 @@ function createAsset( $asset=null, $block_index=null ){
     $info = $counterparty->execute('get_asset_info', array('assets' => array($asset)));
     // Create data object using asset info (if any)
     $data                 = (count($info)) ? (object) $info[0] : (object) [];
-    $description          = substr($data->description,0,250); // Truncate to 250 chars
+    $description          = substr($data->description,0,10000); // Truncate to 10,000 chars (max field length)
     $data->asset_id       = getAssetId($asset);
     $data->issuer_id      = createAddress($data->issuer);
     $data->owner_id       = createAddress($data->owner);
@@ -535,7 +535,7 @@ function updateAssetPrice( $asset=null ){
         byeLog('Error looking up asset id');
     }
     // Bail out on BTC or XCP
-    if($asset_id<=2)
+    if($asset_id<=1)
         return;
     // Lookup last order match for XCP
     $sql = "SELECT
@@ -550,7 +550,7 @@ function updateAssetPrice( $asset=null ){
                 ( m.forward_asset_id='{$asset_id}' AND m.backward_asset_id=2)) AND
                 m.status='completed'
             ORDER BY 
-                m.tx1_index DESC 
+                m.block_index DESC 
             LIMIT 1";
     $results  = $mysqli->query($sql);
     if($results){
@@ -568,6 +568,109 @@ function updateAssetPrice( $asset=null ){
         }
     } else {
         byeLog('Error while trying to lookup asset price');
+    }
+    $btc_prices = array();
+    // Lookup last BTC order match
+    $sql = "SELECT
+                m.block_index,
+                m.forward_asset_id,
+                m.forward_quantity,
+                m.backward_asset_id,
+                m.backward_quantity
+            FROM
+                order_matches m
+            WHERE
+                ((m.forward_asset_id=1 AND m.backward_asset_id='{$asset_id}') OR
+                ( m.forward_asset_id='{$asset_id}' AND m.backward_asset_id=1)) AND
+                m.status='completed'
+            ORDER BY 
+                m.block_index DESC 
+            LIMIT 1";
+    $results  = $mysqli->query($sql);
+    if($results){
+        if($results->num_rows){
+            $data      = $results->fetch_assoc();
+            $btc_amt   = ($data['forward_asset_id']==1) ? $data['forward_quantity'] : $data['backward_quantity'];
+            $xxx_amt   = ($data['forward_asset_id']==1) ? $data['backward_quantity'] : $data['forward_quantity'];
+            $btc_qty   = number_format($btc_amt * 0.00000001,8,'.','');
+            $xxx_qty   = ($divisible) ? number_format($xxx_amt * 0.00000001,8,'.','') : number_format($xxx_amt,0,'.','');
+            $price     = number_format($btc_qty / $xxx_qty,8,'.','');
+            $price_int = number_format($price * 100000000,0,'.','');
+            $btc_prices[$data['block_index']] = $price_int;
+        }
+    } else {
+        byeLog('Error while trying to lookup asset price');
+    }
+    // Lookup last Dispense
+    $sql = "SELECT 
+                count(c.event_id) as credits,
+                d1.tx_index,
+                d1.block_index,
+                t.btc_amount,
+                d1.dispense_quantity,
+                d2.give_quantity,
+                a.asset,
+                a.divisible,
+                d2.satoshirate,
+                d2.oracle_address_id,
+                d2.tx_index as dispenser_tx_index
+            FROM 
+                dispenses d1,
+                dispensers d2,
+                assets a,
+                transactions t,
+                credits c
+            WHERE 
+                d1.dispenser_tx_hash_id=d2.tx_hash_id AND
+                d1.tx_index=t.tx_index AND
+                d1.tx_hash_id=c.event_id AND
+                d1.asset_id=a.id AND
+                d1.asset_id='{$asset_id}'
+            GROUP BY c.event_id 
+            ORDER BY 
+                d1.block_index DESC
+            LIMIT 25";
+    // print $sql;
+    $results = $mysqli->query($sql);
+    $found   = false;
+    if($results){
+        if($results->num_rows){
+            $data      = (object) $results->fetch_assoc();
+            // Only update price on first dispense (ignore dispenses of multiple items)
+            if(!$found && $data->credits==1){
+                $found = true;
+                if($data->oracle_address_id){
+                    // Oracled Dispensers
+                    $quantity   = ($data->divisible==1) ? number_format(($data->dispense_quantity * 0.00000001),8,'.','') : $data->dispense_quantity;
+                    $btc_amount = number_format($data->btc_amount * 0.00000001,8,'.','');
+                    $price      = number_format($btc_amount / $quantity,8,'.','');
+                } else {
+                    // Normal Dispensers
+                    $quantity   = ($data->divisible==1) ? number_format(($data->give_quantity * 0.00000001),8,'.','') : $data->give_quantity;
+                    $btc_amount = number_format($data->satoshirate * 0.00000001,8,'.','');
+                    $price      = bcmul($btc_amount, bcdiv(1, $quantity, 8), 8);
+                }
+                $price_int  = number_format($price * 100000000,0,'.','');
+                // Old way of doing things price = asset_quantity / btc_paid
+                // Problem with this method is if someone overpays on a btcpay, then that is factored into the price
+                // $xxx_qty    = ($data->divisible) ? number_format(($data->dispense_quantity * 0.00000001),8,'.','') : $data->dispense_quantity;
+                // $btc_qty    = number_format(($data->btc_amount * 0.00000001),8,'.','');
+                // $price      = number_format(($btc_qty / $xxx_qty),8,'.','');
+                // $price_int  = number_format($price * 100000000,0,'.','');
+                if(!array_key_exists($data->block_index,$btc_prices) || $btc_prices[$data->block_index] < $price_int)
+                    $btc_prices[$data->block_index] = $price_int;
+            }
+        }
+    } else {
+        byeLog('Error while trying to lookup asset price');
+    }
+    // Update BTC price to use most recent transaction price (block_index)
+    if(count($btc_prices)){
+        ksort($btc_prices);
+        $price_int = array_pop($btc_prices);
+        $results   = $mysqli->query("UPDATE assets SET btc_price='{$price_int}' WHERE id='{$asset_id}'");
+        if(!$results)
+            byeLog('Error updating BTC price for asset ' . $asset);
     }
 }
 
@@ -894,15 +997,12 @@ function updateMarketInfo( $market_id ){
 
     // Calculate price change percentage
     // $price_change = number_format(((($price1_last - $price1_24hr) / $price1_24hr) * 100), 2, '.','');
-    $price1_change = 0 ;
-    $price2_change = 0 ;
-
-    if ($price1_24hr != 0) {
-        $price1_change = bcmul(bcdiv(bcsub(number_format($price1_last,8,'.',''), number_format($price1_24hr,8,'.',''), 8), number_format($price1_24hr,8,'.',''), 8), '100', 2);
-    }
-    if ($price2_24hr != 0) {
-        $price2_change = bcmul(bcdiv(bcsub(number_format($price2_last,8,'.',''), number_format($price2_24hr,8,'.',''), 8), number_format($price2_24hr,8,'.',''), 8), '100', 2);
-    }
+    $price1_change = 0.00;
+    $price2_change = 0.00;
+    if($price1_last > 0 && $price1_24hr > 0)
+        $price1_change = bcmul(bcdiv(bcsub($price1_last, $price1_24hr,8), $price1_24hr, 8), '100', 2);
+    if($price2_last > 0 && $price2_24hr > 0)
+        $price2_change = bcmul(bcdiv(bcsub($price2_last, $price2_24hr,8), $price2_24hr, 8), '100', 2);
 
     // Pass last trade price forward
     if($price1_high==0) $price1_high = $price1_last;
@@ -911,22 +1011,22 @@ function updateMarketInfo( $market_id ){
     if($price2_low==0)  $price2_low  = $price2_last;
 
     // Convert the amounts from floating point to integers
-    $price1_ask_int    = bcmul(number_format($price1_ask,8,'.',''),    '100000000',0);
-    $price1_bid_int    = bcmul(number_format($price1_bid,8,'.',''),    '100000000',0);
-    $price1_high_int   = bcmul(number_format($price1_high,8,'.',''),   '100000000',0);
-    $price1_low_int    = bcmul(number_format($price1_low,8,'.',''),    '100000000',0);
-    $price1_24hr_int   = bcmul(number_format($price1_24hr,8,'.',''),   '100000000',0);
-    $price1_last_int   = bcmul(number_format($price1_last,8,'.',''),   '100000000',0);
-    $price2_ask_int    = bcmul(number_format($price2_bid,8,'.',''),    '100000000',0); // flip bid = ask
-    $price2_bid_int    = bcmul(number_format($price2_ask,8,'.',''),    '100000000',0); // flip ask = bid
-    $price2_high_int   = bcmul(number_format($price2_high,8,'.',''),   '100000000',0);
-    $price2_low_int    = bcmul(number_format($price2_low,8,'.',''),    '100000000',0);
-    $price2_last_int   = bcmul(number_format($price2_last,8,'.',''),   '100000000',0);
-    $price2_24hr_int   = bcmul(number_format($price2_24hr,8,'.',''),   '100000000',0);
-    $price1_change_int = bcmul(number_format($price1_change,8,'.',''),  '100',0);
-    $price2_change_int = bcmul(number_format($price2_change,8,'.',''),  '100',0);
-    $asset1_volume_int = bcmul(number_format($asset1_volume,8,'.',''), '100000000',0);
-    $asset2_volume_int = bcmul(number_format($asset2_volume,8,'.',''), '100000000',0);
+    $price1_ask_int    = bcmul($price1_ask,    '100000000',0);
+    $price1_bid_int    = bcmul($price1_bid,    '100000000',0);
+    $price1_high_int   = bcmul($price1_high,   '100000000',0);
+    $price1_low_int    = bcmul($price1_low,    '100000000',0);
+    $price1_24hr_int   = bcmul($price1_24hr,   '100000000',0);
+    $price1_last_int   = bcmul($price1_last,   '100000000',0);
+    $price2_ask_int    = bcmul($price2_bid,    '100000000',0); // flip bid = ask
+    $price2_bid_int    = bcmul($price2_ask,    '100000000',0); // flip ask = bid
+    $price2_high_int   = bcmul($price2_high,   '100000000',0);
+    $price2_low_int    = bcmul($price2_low,    '100000000',0);
+    $price2_last_int   = bcmul($price2_last,   '100000000',0);
+    $price2_24hr_int   = bcmul($price2_24hr,   '100000000',0);
+    $price1_change_int = bcmul($price1_change,  '100',0);
+    $price2_change_int = bcmul($price2_change,  '100',0);
+    $asset1_volume_int = bcmul(number_format($asset1_volume, 8,'.',''), '100000000',0);
+    $asset2_volume_int = bcmul(number_format($asset2_volume, 8,'.',''), '100000000',0);
 
     // Update the market info
     $sql = "UPDATE 
@@ -1008,5 +1108,73 @@ function databaseCommit(){
     $mysqli->query("COMMIT");
 
 }
+
+
+// Handle getting dispensers information, including current pricing 
+function getDispenserInfo($tx_hash){
+    global $mysqli;
+    $whereSql = "t.hash='{$tx_hash}";
+    // Handle passing tx_index instead of tx_hash
+    if(is_numeric($tx_hash))
+        $whereSql = "d.tx_index='{$tx_hash}'";
+    // Lookup info on the dispenser
+    $sql = "SELECT 
+                d.tx_index,
+                d.block_index,
+                d.give_quantity,
+                d.escrow_quantity,
+                d.give_remaining,
+                d.satoshirate,
+                d.status,
+                a1.asset,
+                a1.asset_longname,
+                a1.divisible,
+                t.hash as tx_hash,
+                a2.address as source,
+                b.block_time as timestamp,
+                d.oracle_address_id
+            FROM 
+                dispensers d, 
+                blocks b,
+                assets a1,
+                index_addresses a2,
+                index_transactions t
+            WHERE 
+                b.block_index=d.block_index AND
+                t.id=d.tx_hash_id AND
+                a1.id=d.asset_id AND
+                a2.id=d.source_id AND
+                {$whereSql}
+            LIMIT 1";
+    $results = $mysqli->query($sql);
+    if($results && $results->num_rows){
+        $row = (object) $results->fetch_assoc();
+        // Handle oracled dispensers by looking up oracle info and returning pricing info
+        if(isset($row->oracle_address_id)){
+            // Get the oracle address
+            $results2 = $mysqli->query("SELECT address FROM index_addresses WHERE id={$row->oracle_address_id}");
+            if($results2){
+                $row2 = (object) $results2->fetch_assoc();
+                $row->oracle_address = $row2->address;
+            }
+            // Get the oracle info
+            $results3 = $mysqli->query("SELECT b1.value, b1.text, b1.block_index, b2.block_time FROM broadcasts b1, blocks b2 WHERE b1.block_index=b2.block_index AND b1.source_id='{$row->oracle_address_id}' AND b1.status='valid' ORDER by b1.tx_index DESC LIMIT 1");
+            if($results3){
+                $row3 = (object) $results3->fetch_assoc();
+                $row->oracle_price              = number_format($row3->value,2,'.','');
+                $row->oracle_price_last_updated = $row3->block_index;
+                $row->oracle_price_block_time   = $row3->block_time;
+                $row->fiat_price                = number_format(($row->satoshirate * 0.01),2,'.','');
+                $sat_price                      = ($row->oracle_price==0) ? 0 : ceil(((1 / $row->oracle_price) * $row->fiat_price) * 100000000);
+                $row->satoshi_price             = strval($sat_price);
+                $row->fiat_unit                 = explode('-',$row3->text)[1]; // Extract Fiat from BTC-XXX value
+            }
+        }
+        unset($row->oracle_address_id);
+    }
+    // var_dump($row);
+    return $row;
+}
+
 
 ?>
