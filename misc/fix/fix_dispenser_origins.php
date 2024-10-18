@@ -1,9 +1,9 @@
 #!/usr/bin/env php
 <?php
 /*********************************************************************
- * fix_dispenser_statuses.php
+ * fix_dispenser_origins.php
  * 
- * Script to loop through all open dispensers and validate open/closed state
+ * Script to loop through all open dispensers and validate origin
  ********************************************************************/
 
 // Hide all but errors
@@ -14,6 +14,11 @@ $testnet = (isset($args['testnet'])) ? true : false;
 $runtype = ($testnet) ? 'testnet' : 'mainnet';
 
 require_once(__DIR__ . '/../../includes/config.php');
+
+// Define some constants used for locking processes and logging errors
+define("LOCKFILE", '/var/tmp/counterparty2mysql-' . $runtype . '.lock');
+define("LASTFILE", '/var/tmp/counterparty2mysql-' . $runtype . '.last-block');
+define("ERRORLOG", '/var/tmp/counterparty2mysql-' . $runtype . '.errors');
 
 // Initialize the database and counterparty API connections
 initDB(DB_HOST, DB_USER, DB_PASS, DB_DATA, true);
