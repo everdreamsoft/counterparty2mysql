@@ -20,6 +20,16 @@ if($runtype=='mainnet'){
 */
 
 
+if($runtype=='monaparty'){
+    define("DB_HOST", "127.0.0.1");
+    define("DB_USER", "root");
+    define("DB_PASS", "");
+    define("DB_DATA", "Monaparty");
+    define("CP_HOST", "https://counterparty.api.monaparty.me/");
+    define("CP_USER", "rpc");
+    define("CP_PASS", "");
+}
+
 if($runtype=='mainnet'){
     define("DB_HOST", "127.0.0.1");
     define("DB_USER", "root");
