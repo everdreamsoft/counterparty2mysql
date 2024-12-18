@@ -195,12 +195,9 @@ function createAsset( $asset=null, $block_index=null ){
     $data->asset_longname = $mysqli->real_escape_string($data->asset_longname);
     // Set asset type (1=Named, 2=Numeric, 3=Subasset, 4=Failed issuance, 5=Numeric Subasset)
     $data->type           = (substr($asset,0,1)=='A') ? 2 : 1;
-    // Named Subasset
-    if($data->type == 1 && $data->asset_longname!='')
-        $data->type = 3;
-    // Numeric Subasset
-    if($data->type == 2 && $data->asset_longname!='')
-        $data->type = 5;
+    // If subasset, determine if named subasset or numeric subassset 
+    if($data->asset_longname!='')
+        $data->type = (substr($data->asset_longname,0,1)=='A') ? 5 : 3;
     // Failed asset registration
     if(count($info)==0)
         $data->type = 4;
@@ -216,6 +213,9 @@ function createAsset( $asset=null, $block_index=null ){
             // Update asset information
             $row = $results->fetch_assoc();
             $id  = $row['id'];
+            // If we don't have any asset data, skip update and just return asset id
+            if(!isset($data->asset_id))
+                return $id;
             $sql = "UPDATE assets SET
                         asset_id       = '{$data->asset_id}',
                         asset_longname = '{$data->asset_longname}',
@@ -235,6 +235,9 @@ function createAsset( $asset=null, $block_index=null ){
                 byeLog('Error while trying to update asset record for ' . $asset . ' : ' . $sql);
             }
         } else {
+            // If we don't have any asset data, throw error
+            if(!isset($data->asset_id))
+                byeLog('Error while trying to create asset record for ' . $asset . ': no asset data found!');
             // Create asset information
             $sql = "INSERT INTO assets (asset_id, asset, asset_longname, block_index, type, divisible, description, issuer_id, locked, owner_id, supply) values (
                 '{$data->asset_id}',
