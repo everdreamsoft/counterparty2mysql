@@ -5,7 +5,7 @@ ALTER TABLE messages add tx_hash    VARCHAR(120);
 ALTER TABLE messages add event_hash VARCHAR(120);
 CREATE INDEX event on messages (event);
 
--- transactions 
+-- transactions
 ALTER TABLE transactions ADD utxos_info TEXT;
 
 -- credits table
@@ -41,12 +41,13 @@ ALTER TABLE sends ADD fee_paid INTEGER UNSIGNED;
 -- transactions table
 ALTER TABLE transactions MODIFY btc_amount VARCHAR(250);
 ALTER TABLE transactions MODIFY fee VARCHAR(250);
+ALTER TABLE transactions ADD transaction_type VARCHAR(45);
 
 -- address_events table
 DROP TABLE IF EXISTS address_events;
 CREATE TABLE address_events (
     address_id  INTEGER UNSIGNED,  -- id from index_addresses table
-    event_index INTEGER UNSIGNED   
+    event_index INTEGER UNSIGNED
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 CREATE UNIQUE INDEX address_id ON addresses (address_id);
 
@@ -97,9 +98,9 @@ CREATE TABLE fairmints (
     tx_hash_id                  INTEGER UNSIGNED,
     tx_index                    INTEGER UNSIGNED,
     block_index                 INTEGER UNSIGNED,
-    source_id                   INTEGER UNSIGNED, 
+    source_id                   INTEGER UNSIGNED,
     fairminter_tx_hash_id       INTEGER UNSIGNED,
-    asset_id                    INTEGER UNSIGNED, 
+    asset_id                    INTEGER UNSIGNED,
     earn_quantity               VARCHAR(250),
     paid_quantity               VARCHAR(250),
     commission                  VARCHAR(250),
