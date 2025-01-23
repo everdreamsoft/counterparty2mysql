@@ -383,55 +383,57 @@ while ($block <= $current) {
         }
 
         // Handle 'update' commands
-        if ($command == 'update') {
-            $sql = "UPDATE {$table} SET";
+        if($command=='update'){
+            $sql   = "UPDATE {$table} SET";
             $where = "";
-            foreach ($fields as $index => $field) {
+            foreach($fields as $index => $field){
                 // Update bets and orders records using tx_hash
-                if (in_array($table, array('orders', 'bets', 'dispensers', 'fairminters')) && $field == 'tx_hash_id') {
-                    if ($where != "")
+                if(in_array($table,array('orders','bets','fairminters')) && $field=='tx_hash_id'){
+                    if($where!="")
                         $where .= " AND ";
                     $where .= " tx_hash_id='{$values[$index]}'";
                     // Update *_matches tables using id field
-                } else if (in_array($table, array('order_matches', 'bet_matches', 'rps_matches')) &&
-                    in_array($field, array('order_match_id', 'bet_match_id', 'rps_match_id'))) {
+                } else if(in_array($table,array('order_matches','bet_matches','rps_matches')) &&
+                    in_array($field,array('order_match_id','bet_match_id','rps_match_id'))){
                     $where .= " id='{$values[$index]}'";
                     // Update rps table using tx_hash or tx_index
-                } else if ($table == 'rps' && in_array($field, array('tx_hash_id', 'tx_index'))) {
+                } else if($table=='rps' && in_array($field,array('tx_hash_id','tx_index'))){
                     $where .= " {$field}='{$values[$index]}'";
                     // Update nonces table using address_id
-                } else if ($table == 'nonces' && $field == 'address_id') {
+                } else if($table=='nonces' && $field=='address_id'){
                     $where .= " {$field}='{$values[$index]}'";
                     // Set correct whereSQL for dispenser updates
-                } else if ($table == 'dispensers' && in_array($field, array('block_index', 'status', 'asset_id', 'tx_index', 'action'))) {
+                } else if($table=='dispensers' && in_array($field, array('block_index','status','asset_id', 'tx_index','action'))){
                     // Skip updates on certain fields
-                    if (in_array($field, array('block_index', 'asset_id', 'action')))
+                    if(in_array($field, array('block_index','asset_id','action')))
                         continue;
                     // Only allow status updates to status=11 (Closing) andstatus=10 (Closed) since status can only go from Open to Closed in updates (otherwise we could open up previously closed dispensers...yikes)
-                    if ($field == 'status' && ($values[$index] == 10 || $values[$index] == 11))
-                        $sql .= " status='{$values[$index]}',";
+                    if($field=='status' && ($values[$index]==10||$values[$index]==11))
+                        $sql   .= " status='{$values[$index]}',";
                     // Update dispensers using tx_index if we have it, otherwise default to using source and asset to identify dispenser
-                    if ($where == "" && in_array('tx_index', array_values($fields))) {
-                        $where = " tx_index='{$fldmap['tx_index']}'";
-                    } else {
-                        $where = " source_id='{$fldmap['source_id']}' AND asset_id='{$fldmap['asset_id']}'";
+                    if($where==""){
+                        if(in_array('tx_index',array_values($fields))){
+                            $where = " tx_index='{$fldmap['tx_index']}'";
+                        } else {
+                            $where = " source_id='{$fldmap['source_id']}' AND asset_id='{$fldmap['asset_id']}'";
+                        }
                     }
                     // Skup updating the id field unnecessarily when updating an order match
-                } else if ($table == 'order_matches' && $field == 'id') {
+                } else if($table=='order_matches' && $field=='id'){
                     continue;
                 } else {
                     $sql .= " {$field}='{$values[$index]}',";
                 }
             }
             // Only proceed if we have a valid where criteria
-            if ($where != "") {
-                $sql = rtrim($sql, ',') . " WHERE " . $where;
+            if($where!=""){
+                $sql = rtrim($sql,',') . " WHERE " .  $where;
             } else {
                 byeLog('Error - no WHERE criteria found');
             }
             // print "{$sql}\n";
             $results = $mysqli->query($sql);
-            if (!$results)
+            if(!$results)
                 byeLog('Error while trying to update record in ' . $table . ' : ' . $sql);
         }
 
