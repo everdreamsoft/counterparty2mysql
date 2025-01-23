@@ -38,6 +38,11 @@ CREATE INDEX fair_minting ON issuances (fair_minting);
 -- sends table
 ALTER TABLE sends ADD fee_paid INTEGER UNSIGNED;
 
+ALTER TABLE sends ADD COLUMN send_type VARCHAR(11) DEFAULT NULL;
+ALTER TABLE sends ADD COLUMN source_address VARCHAR(120) DEFAULT NULL;
+ALTER TABLE sends ADD COLUMN destination_address VARCHAR(120) DEFAULT NULL;
+
+
 -- transactions table
 ALTER TABLE transactions MODIFY btc_amount VARCHAR(250);
 ALTER TABLE transactions MODIFY fee VARCHAR(250);
