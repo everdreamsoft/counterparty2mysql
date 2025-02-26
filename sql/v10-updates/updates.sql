@@ -36,7 +36,12 @@ ALTER TABLE issuances ADD asset_events TEXT;
 CREATE INDEX fair_minting ON issuances (fair_minting);
 
 -- sends table
-ALTER TABLE sends ADD fee_paid INTEGER UNSIGNED;
+ALTER TABLE sends ADD fee_paid  INTEGER UNSIGNED;
+ALTER TABLE sends ADD send_type TEXT;
+ALTER TABLE sends ADD destination_address_id INTEGER UNSIGNED;
+ALTER TABLE sends ADD source_address_id INTEGER UNSIGNED;
+CREATE INDEX source_address_id ON sends (source_address_id);
+CREATE INDEX destination_address_id ON sends (destination_address_id);
 
 ALTER TABLE sends ADD COLUMN send_type VARCHAR(11) DEFAULT NULL;
 ALTER TABLE sends ADD COLUMN source_address VARCHAR(120) DEFAULT NULL;
