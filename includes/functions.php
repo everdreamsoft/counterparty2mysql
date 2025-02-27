@@ -120,6 +120,7 @@ function getAssetId($asset=null){
 function createBlock( $block_index=null ){
     global $mysqli, $counterparty;
     $data = (object) $counterparty->execute('get_block_info', array('block_index' => $block_index));
+    print_r($data);
     $data->block_hash_id          = createTransaction($data->block_hash);
     $data->previous_block_hash_id = createTransaction($data->previous_block_hash);
     $data->ledger_hash_id         = createTransaction($data->ledger_hash);
@@ -142,7 +143,7 @@ function createBlock( $block_index=null ){
                         block_index='{$block_index}'";
             $results = $mysqli->query($sql);
             if($results){
-                return $id;
+                return $data->block_time ;
             } else {
                 byeLog('Error while trying to update block ' . $data->block_index);
             }
@@ -159,7 +160,7 @@ function createBlock( $block_index=null ){
                 '{$data->difficulty}')";
             $results = $mysqli->query($sql);
             if($results){
-                return $mysqli->insert_id;
+                  return $data->block_time ;;
             } else {
                 byeLog('Error while trying to create block ' . $data->block_index);
             }
@@ -167,6 +168,9 @@ function createBlock( $block_index=null ){
     } else {
         byeLog('Error while trying to lookup record in blocks table');
     }
+
+    print "tell me why I'm not noding".$data->block_time;
+
 }
 
 
