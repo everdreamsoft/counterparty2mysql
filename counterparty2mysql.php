@@ -120,7 +120,8 @@ while($block <= $current){
     print "processing block {$block}...";
 
     // create block record
-    createBlock($block);
+    $blockTime = createBlock($block);
+    echo ("blocktime $blockTime");
 
     // Define array hold asset/address/tranaction id mappings for this block
     // We want to reset these every block since we use the assets list querying address balances
@@ -172,6 +173,8 @@ while($block <= $current){
         // Create record in the messages table (so we can review the CP messages as needed)
         createMessage($message);
     }
+
+
 
     // Loop through addresses and update any asset balances
     // Doing this first ensures that address balances are correct immediately
@@ -483,9 +486,38 @@ while($block <= $current){
     // foreach($transactions as $transaction)
     //     createTransactionHistory($transaction);
 
+
+
+
+        // Create a DateTime object from the blocktimestamp
+$blockDatetime = new DateTime();
+$blockDatetime->setTimestamp($blockTime);
+
+// Create a DateTime object for now
+$now = new DateTime();
+
+// Calculate the difference between now and the block date
+$interval = $blockDatetime->diff($now);
+
+// Display the block date and the difference in a human-readable way
+if ($interval->y > 0) {
+    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->y . " years ago)";
+} elseif ($interval->m > 0) {
+    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->m . " months ago)";
+} elseif ($interval->d > 0) {
+    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->d . " days ago)";
+} elseif ($interval->h > 0) {
+    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->h . " hours ago)";
+} elseif ($interval->i > 0) {
+    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->i . " minutes ago)";
+} else {
+    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->s . " seconds ago)";
+}
+
+
     // Report time to process block
     $time = $timer->finish();
-    print " Done [{$time}ms]\n";
+    print " Done [{$time}ms] $dateString \n";
 
     // Bail out if user only wants to process one block
     if($single){
