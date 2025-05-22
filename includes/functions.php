@@ -123,8 +123,14 @@ function getAssetId($asset=null){
 // Create/Update records in the 'blocks' table and return record id
 function createBlock( $block_index=null ){
     global $mysqli, $counterparty;
-    $data = (object) $counterparty->execute('get_block_info', array('block_index' => $block_index));
-    print_r($data);
+    // Get block info using V2 API
+    $url = CP_HOST . '/v2/blocks/' . $block_index;
+    $data = json_decode(file_get_contents($url));
+    if (!$data || !isset($data->result)) {
+        byeLog('Error while trying to get block info for block ' . $block_index);
+    }
+    $data = (object) $data->result;
+    
     $data->block_hash_id          = createTransaction($data->block_hash);
     $data->previous_block_hash_id = createTransaction($data->previous_block_hash);
     $data->ledger_hash_id         = createTransaction($data->ledger_hash);
