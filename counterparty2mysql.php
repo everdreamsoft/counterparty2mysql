@@ -38,7 +38,7 @@ initCP(CP_HOST, CP_USER, CP_PASS, true);
 $debug = false;
 
 // Flag to indicate if we should save messages in the `messages` table
-// Set this to false if you want a faster parse
+// Set this to false if you want a faster parse 
 $saveMessages = true;
 
 // Flag to indicate if we should update market/asset prices as we parse each block
@@ -49,7 +49,7 @@ $saveMessages = true;
 $updatePrices = true;
 
 // Flag to indicate if we should update balances as we parse each block
-// Set this to false if you want a faster parse
+// Set this to false if you want a faster parse 
 // NOTE: If this is set to false, be sure to run the following scripts after your done with your parse to update all address balances since block_index
 // ./misc/fix_address_balances.php --block=block_index
 $updateBalances = true;
@@ -132,9 +132,6 @@ while($block <= $current){
 
     // Get list of block messages from counterparty API
     $messages = $counterparty->getMessages($block);
-    // create block record
-    $blockTime = createBlock($block);
-    echo ("blocktime $blockTime");
 
     // Define array hold asset/address/tranaction id mappings for this block
     // We want to reset these every block since we use the assets list querying address balances
@@ -198,7 +195,7 @@ while($block <= $current){
             createTxIndex($obj->tx_index, $obj->block_index, $msg->category, $transactions[$obj->tx_hash]);
         // Create record in the messages table (so we can review the CP messages as needed)
         if($saveMessages)
-            createMessage($message);
+            createMessage($message);        
     }
 
     // Loop through addresses and update any asset balances
@@ -240,7 +237,7 @@ while($block <= $current){
             // swap address for id
             foreach($fields_address as $name){
                 if($field==$name){
-                    // Handle UTXO fields by separating utxo transaction and utxo output
+                    // Handle UTXO fields by separating utxo transaction and utxo output 
                     if(in_array($field,array('source','destination')) && str_contains($value, ':')){
                         $utxo = explode(':',$value);
                         $fld  = $field;
@@ -261,7 +258,7 @@ while($block <= $current){
             // swap transaction for id
             foreach($fields_transaction as $name){
                 if($field==$name){
-                    // Handle UTXO fields by separating utxo transaction and utxo output
+                    // Handle UTXO fields by separating utxo transaction and utxo output 
                     if($field=='utxo'){
                         $utxo  = explode(':',$value);
                         // Add utxo_output to the field and values arrays
@@ -295,7 +292,7 @@ while($block <= $current){
                 $value = intval($value);
             // Truncate description to first 10K characters
             if($field=='description')
-                $value = substr($value,0,10000);
+                $value = substr($value,0,10000); 
             /* Ignore certain fields */
             if($table=='issuances' && in_array($field, array('locked','transfer','divisible','callable')) && $value=='')
                 $ignore = true;
@@ -471,43 +468,9 @@ while($block <= $current){
         createUpdateMarkets($markets);
     }
 
-    // Get list of transactions from the transactions table (used to track BTC paid and miners fee)
-    // $transactions = $counterparty->execute('get_transactions', array('filters' => array("field" => "block_index", "op" => "==", "value" => $block)));
-    // foreach($transactions as $transaction)
-    //     createTransactionHistory($transaction);
-
-
-
-
-        // Create a DateTime object from the blocktimestamp
-$blockDatetime = new DateTime();
-$blockDatetime->setTimestamp($blockTime);
-
-// Create a DateTime object for now
-$now = new DateTime();
-
-// Calculate the difference between now and the block date
-$interval = $blockDatetime->diff($now);
-
-// Display the block date and the difference in a human-readable way
-if ($interval->y > 0) {
-    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->y . " years ago)";
-} elseif ($interval->m > 0) {
-    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->m . " months ago)";
-} elseif ($interval->d > 0) {
-    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->d . " days ago)";
-} elseif ($interval->h > 0) {
-    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->h . " hours ago)";
-} elseif ($interval->i > 0) {
-    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->i . " minutes ago)";
-} else {
-    $dateString = $blockDatetime->format('Y-m-d H:i:s') . " (" . $interval->s . " seconds ago)";
-}
-
-
     // Report time to process block
     $time = $timer->finish();
-    print " Done [{$time}ms] $dateString \n";
+    print " Done [{$time}ms]\n";
 
     // Bail out if user only wants to process one block
     if($single){

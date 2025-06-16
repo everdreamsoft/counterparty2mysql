@@ -120,70 +120,6 @@ function getAssetId($asset=null){
 }
 
 
-// Create/Update records in the 'blocks' table and return record id
-function createBlock( $block_index=null ){
-    global $mysqli, $counterparty;
-    // Get block info using V2 API
-    $url = CP_HOST . '/v2/blocks/' . $block_index;
-    $data = json_decode(file_get_contents($url));
-    if (!$data || !isset($data->result)) {
-        byeLog('Error while trying to get block info for block ' . $block_index);
-    }
-    $data = (object) $data->result;
-    
-    $data->block_hash_id          = createTransaction($data->block_hash);
-    $data->previous_block_hash_id = createTransaction($data->previous_block_hash);
-    $data->ledger_hash_id         = createTransaction($data->ledger_hash);
-    $data->txlist_hash_id         = createTransaction($data->txlist_hash);
-    $data->messages_hash_id       = createTransaction($data->messages_hash);
-    $results = $mysqli->query("SELECT block_index FROM blocks WHERE block_index='{$data->block_index}' LIMIT 1");
-    if($results){
-        if($results->num_rows){
-            $row = $results->fetch_assoc();
-            $id  = $row['id'];
-            $sql = "UPDATE blocks SET
-                       block_time             = '{$data->block_time}',
-                       block_hash_id          = '{$data->block_hash_id}',
-                       previous_block_hash_id = '{$data->previous_block_hash_id}',
-                       ledger_hash_id         = '{$data->ledger_hash_id}',
-                       txlist_hash_id         = '{$data->txlist_hash_id}',
-                       messages_hash_id       = '{$data->messages_hash_id}',
-                       difficulty             = '{$data->difficulty}'
-                    WHERE
-                        block_index='{$block_index}'";
-            $results = $mysqli->query($sql);
-            if($results){
-                return $data->block_time ;
-            } else {
-                byeLog('Error while trying to update block ' . $data->block_index);
-            }
-        } else {
-            // Grab data on the asset from api and set some values before stashing info in db
-            $sql = "INSERT INTO blocks (block_index, block_time, block_hash_id, previous_block_hash_id, ledger_hash_id, txlist_hash_id, messages_hash_id, difficulty) values (
-                '{$data->block_index}',
-                '{$data->block_time}',
-                '{$data->block_hash_id}',
-                '{$data->previous_block_hash_id}',
-                '{$data->ledger_hash_id}',
-                '{$data->txlist_hash_id}',
-                '{$data->messages_hash_id}',
-                '{$data->difficulty}')";
-            $results = $mysqli->query($sql);
-            if($results){
-                  return $data->block_time ;;
-            } else {
-                byeLog('Error while trying to create block ' . $data->block_index);
-            }
-        }
-    } else {
-        byeLog('Error while trying to lookup record in blocks table');
-    }
-
-    print "tell me why I'm not noding".$data->block_time;
-
-}
-
-
 // Create/Update records in the 'assets' table and return record id
 function createAsset( $asset=null, $block_index=null ){
     global $mysqli, $counterparty;
@@ -198,7 +134,7 @@ function createAsset( $asset=null, $block_index=null ){
     // Replace 4-byte UTF-8 characters (fixes issue with breaking SQL queries) 
     $description = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $data->description);
     // Truncate to 10,000 chars (max field length)
-    $description              = substr($description,0,10000);
+    $description              = substr($description,0,10000); 
     $data->asset_id           = ($asset=='XCP') ? 1 : $data->asset_id;
     $data->issuer_id          = createAddress($data->issuer);
     $data->owner_id           = createAddress($data->owner);
@@ -552,7 +488,7 @@ function updateAddressBalances( $address=null, $asset_list=null ){
                 byeLog('Error while trying to delete asset records in the balances table');
         }
     } else {
-        // Delete all balances records for this address
+        // Delete all balances records for this address 
         $sql = "DELETE FROM balances WHERE address_id='{$address_id}' OR utxo_address_id='{$address_id}'";
         $results = $mysqli->query($sql);
         if(!$results)
@@ -575,7 +511,7 @@ function updateAddressBalances( $address=null, $asset_list=null ){
                 $utxo_address_id = createAddress($balance->utxo_address);
             }
             // Translate asset to asset_id
-            $asset_id   = getAssetDatabaseId($balance->asset);
+            $asset_id   = getAssetDatabaseId($balance->asset);               
             $quantity   = $balance->quantity;
             // Create asset balance only if the quantity is greater than 0
             if($quantity > 0 && isset($asset_id)){
@@ -818,7 +754,7 @@ function createMarket($asset1, $asset2){
             return $row['id'];
         } else {
             $asset1_id = getAssetDatabaseId($asset1);
-            $asset2_id = getAssetDatabaseId($asset2);
+            $asset2_id = getAssetDatabaseId($asset2); 
             $results   = $mysqli->query("INSERT INTO markets (asset1_id, asset2_id) values ('{$asset1_id}', '{$asset2_id}')");
             if($results && $mysqli->insert_id){
                 return $mysqli->insert_id;
@@ -946,10 +882,10 @@ function updateMarketInfo( $market_id ){
             $row = $results->fetch_assoc();
             $forward      = ($row['forward_asset_id']==$asset1_id) ? $row['forward_quantity'] : $row['backward_quantity'];
             $backward     = ($row['forward_asset_id']==$asset1_id) ? $row['backward_quantity'] : $row['forward_quantity'];
-            $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8) : intval($forward);
-            $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8) : intval($backward);
-            $price1_last  = bcdiv(number_format($backward_qty,8,'.',''), number_format($forward_qty,8,'.',''),8);
-            $price2_last  = bcdiv(number_format($forward_qty,8,'.',''), number_format($backward_qty,8,'.',''),8);
+            $forward_qty  = ($asset1_divisible) ? bcmul($forward, '0.00000001',8) : intval($forward);
+            $backward_qty = ($asset2_divisible) ? bcmul($backward, '0.00000001',8) : intval($backward);
+            $price1_last  = bcdiv($backward_qty, $forward_qty,8);
+            $price2_last  = bcdiv($forward_qty, $backward_qty,8);
         }
     } else {
         byeLog("Error while trying to lookup last trade price for {$asset1} / {$asset2}");
@@ -979,10 +915,10 @@ function updateMarketInfo( $market_id ){
             $row = $results->fetch_assoc();
             $forward      = ($row['forward_asset_id']==$asset1_id) ? $row['forward_quantity'] : $row['backward_quantity'];
             $backward     = ($row['forward_asset_id']==$asset1_id) ? $row['backward_quantity'] : $row['forward_quantity'];
-            $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8) : intval($forward);
-            $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8) : intval($backward);
-            $price1_24hr  = bcdiv(number_format($backward_qty,8,'.',''), number_format($forward_qty,8,'.',''),8);
-            $price2_24hr  = bcdiv(number_format($forward_qty,8,'.',''), number_format($backward_qty,8,'.',''),8);
+            $forward_qty  = ($asset1_divisible) ? bcmul($forward, '0.00000001',8) : intval($forward);
+            $backward_qty = ($asset2_divisible) ? bcmul($backward, '0.00000001',8) : intval($backward);
+            $price1_24hr  = bcdiv($backward_qty, $forward_qty,8);
+            $price2_24hr  = bcdiv($forward_qty, $backward_qty,8);
         }
     } else {
         byeLog("Error while trying to lookup last trade price for {$asset1} / {$asset2}");
@@ -1005,10 +941,10 @@ function updateMarketInfo( $market_id ){
     if($results){
         if($results->num_rows){
             while($row = $results->fetch_assoc()){
-                $give_quantity = ($asset2_divisible) ? bcmul(number_format($row['give_quantity'],8,'.',''), '0.00000001',8) : intval($row['give_quantity']);
-                $get_quantity  = ($asset1_divisible) ? bcmul(number_format($row['get_quantity'],8,'.',''),  '0.00000001',8) : intval($row['get_quantity']);
-                $price1         = bcdiv(number_format($give_quantity,8,'.',''), number_format($get_quantity,8,'.',''),8);
-                $price2         = bcdiv(number_format($get_quantity,8,'.',''), number_format($give_quantity,8,'.',''),8);
+                $give_quantity = ($asset2_divisible) ? bcmul($row['give_quantity'], '0.00000001',8) : intval($row['give_quantity']);
+                $get_quantity  = ($asset1_divisible) ? bcmul($row['get_quantity'],  '0.00000001',8) : intval($row['get_quantity']);
+                $price1         = bcdiv($give_quantity, $get_quantity,8);
+                $price2         = bcdiv($get_quantity, $give_quantity,8);
                 // print "price1={$price1} price2={$price2} tx={$row['tx_index']}\n";
                 if($price1==0||$price2==0)
                     continue;
@@ -1039,10 +975,10 @@ function updateMarketInfo( $market_id ){
     if($results){
         if($results->num_rows){
             while($row = $results->fetch_assoc()){
-                $give_quantity = ($asset1_divisible) ? bcmul(number_format($row['give_quantity'],8,'.',''), '0.00000001',8) : intval($row['give_quantity']);
-                $get_quantity  = ($asset2_divisible) ? bcmul(number_format($row['get_quantity'],8,'.',''),  '0.00000001',8) : intval($row['get_quantity']);
-                $price1        = bcdiv(number_format($get_quantity,8,'.',''), number_format($give_quantity,8,'.',''),8);
-                $price2        = bcdiv(number_format($give_quantity,8,'.',''), number_format($get_quantity,8,'.',''),8);
+                $give_quantity = ($asset1_divisible) ? bcmul($row['give_quantity'], '0.00000001',8) : intval($row['give_quantity']);
+                $get_quantity  = ($asset2_divisible) ? bcmul($row['get_quantity'],  '0.00000001',8) : intval($row['get_quantity']);
+                $price1        = bcdiv($get_quantity, $give_quantity,8);
+                $price2        = bcdiv($give_quantity, $get_quantity,8);
                 // print "price1={$price1} price2={$price2} tx={$row['tx_index']}\n";
                 if($price1==0||$price2==0)
                     continue;
@@ -1071,7 +1007,7 @@ function updateMarketInfo( $market_id ){
              (m.forward_asset_id='{$asset2_id}' AND m.backward_asset_id='{$asset1_id}')) AND
             m.status='completed' AND
             m.block_index>='{$block_24hr}'
-        ORDER BY tx1_index DESC";
+        ORDER BY tx1_index DESC";    
         // print $sql;
     $results = $mysqli->query($sql);
     if($results){
@@ -1079,10 +1015,10 @@ function updateMarketInfo( $market_id ){
             while($row = $results->fetch_assoc()){
                 $forward      = ($row['forward_asset_id']==$asset1_id) ? $row['forward_quantity'] : $row['backward_quantity'];
                 $backward     = ($row['forward_asset_id']==$asset1_id) ? $row['backward_quantity'] : $row['forward_quantity'];
-                $forward_qty  = ($asset1_divisible) ? bcmul(number_format($forward,8,'.',''), '0.00000001',8) : intval($forward);
-                $backward_qty = ($asset2_divisible) ? bcmul(number_format($backward,8,'.',''), '0.00000001',8) : intval($backward);
-                $price1       = bcdiv(number_format($backward_qty,8,'.',''), number_format($forward_qty,8,'.',''),8);
-                $price2       = bcdiv(number_format($forward_qty,8,'.',''), number_format($backward_qty,8,'.',''),8);
+                $forward_qty  = ($asset1_divisible) ? bcmul($forward, '0.00000001',8) : intval($forward);
+                $backward_qty = ($asset2_divisible) ? bcmul($backward, '0.00000001',8) : intval($backward);
+                $price1       = bcdiv($backward_qty, $forward_qty,8);
+                $price2       = bcdiv($forward_qty, $backward_qty,8);
                 if($price1_high==0 && $price1_low==0){
                     $price1_high = $price1_24hr;
                     $price1_low  = $price1_24hr;
@@ -1104,7 +1040,7 @@ function updateMarketInfo( $market_id ){
         }
     } else {
         byeLog("Error while trying to lookup 24-hour stats");
-    }
+    }    
 
 
     // Calculate price change percentage
@@ -1207,19 +1143,6 @@ function updateMarketInfo( $market_id ){
 
 }
 
-function databaseBeginTransaction(){
-    global $mysqli ;
-
-    $mysqli->query("START TRANSACTION;");
-
-}
-
-function databaseCommit(){
-    global $mysqli ;
-
-    $mysqli->query("COMMIT");
-
-}
 
 
 // Handle getting dispensers information, including current pricing 

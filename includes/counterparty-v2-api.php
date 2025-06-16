@@ -118,6 +118,8 @@ class CounterpartyV2API {
         return $data;
     }
 
+
+
     // Handle creating message based on event
     // Note: This is because the counterparty-core devs broke the /v1/ get_messages API endpoint and it no longer returns all messages as expected
     //       as a result we need to now request all events from the /v2/ API and convert them into messages which can then be used in the messages table
