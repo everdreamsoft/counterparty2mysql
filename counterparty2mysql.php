@@ -152,10 +152,14 @@ while($block <= $current){
     // }
     // $messages = $data;
 
+    $counter = 0 ;
     // Loop through messages and create assets, addresses, transactions and setup id mappings
     foreach($messages as $message){
+
         $msg = (object) $message;
         $obj = json_decode($msg->bindings);
+        echo " \n  $counter of ".count($messages);
+        $counter++ ;
         foreach($obj as $field => $value){
             // Skip any empty or unset values
             if(!isset($value) || empty($value))
@@ -200,21 +204,27 @@ while($block <= $current){
 
     // Loop through addresses and update any asset balances
     // Doing this first ensures that address balances are correct immediately
+    $counter=0 ;
     if($updateBalances){
         foreach($addresses as $address => $address_id){
+            echo "Loop through addresses  \n  $counter of ".count($addresses);
+            $counter++ ;
             // Ignore any multi-sig addresses (address1-address2)
             if(str_contains($address, '-'))
                 continue;
             updateAddressBalances($address, array_keys($assets));
         }
     }
-
+    $counter = 0 ;
     // Loop through the messages and create/update the counterparty tables
     foreach($messages as $message){
         $msg      = (object) $message;
         $table    = $msg->category;
         $bindings = json_decode($msg->bindings);
         $command  = $msg->command;
+
+        echo "Loop through the messages and create/update the counterparty tables  \n  $counter of ".count($messages);
+        $counter++ ;
 
         // v10.0.0 - Ignore certain messages for now as they conflict with our already existing tables and bloats database by not indexing addresses/hashes via id
         if(in_array($table,array('assets')))
@@ -433,10 +443,15 @@ while($block <= $current){
             updateAssetPrice($asset);
 
     // array of markets
-    $markets = array(); 
+    $markets = array();
 
+    $counter = 0 ;
     // Loop through messages and detect any DEX market changes
     foreach($messages as $message){
+
+        echo "Loop through messages and detect any DEX market changes  \n  $counter of ".count($messages);
+        $counter++ ;
+
         $msg = (object) $message;
         $obj = json_decode($msg->bindings);
         $market = false;
