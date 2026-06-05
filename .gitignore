@@ -1,5 +1,11 @@
 .DS_Store
 /misc/fix/ERRORLOG
 bootstrap
-includes/config.php
 configFiles
+
+# Config locale (ne jamais tracker)
+includes/config.php
+
+# Divers
+docker-compose.bak
+.idea/
