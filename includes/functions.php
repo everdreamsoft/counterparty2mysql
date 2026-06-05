@@ -140,7 +140,7 @@ function createAsset( $asset=null, $block_index=null ){
     $data->owner_id           = createAddress($data->owner);
     $data->divisible          = ($data->divisible) ? 1 : 0;  // convert to boolean
     $data->locked             = ($data->locked) ? 1 : 0 ;    // convert to boolean
-    $data->supply             = intval($data->supply);
+    $data->supply             = ($data->supply > 0) ? intval($data->supply) : 0;
     $data->description        = $mysqli->real_escape_string($description);
     $data->description_locked = ($data->description_locked) ? 1 : 0 ;    // convert to boolean
     $data->asset_longname     = $mysqli->real_escape_string($data->asset_longname);
@@ -335,6 +335,9 @@ function createMessage( $message=null ){
     $event         = $mysqli->real_escape_string($msg->event);
     $tx_hash       = $mysqli->real_escape_string($msg->tx_hash);
     $event_hash    = $mysqli->real_escape_string($msg->event_hash);
+    // timestamp is an unquoted numeric column; some Counterparty 2.0 events (eg CREDIT)
+    // arrive with no timestamp, so fall back to NULL to avoid a malformed SQL value
+    $timestamp     = ($timestamp === '' || $timestamp === null) ? 'NULL' : $timestamp;
     $results       = $mysqli->query("SELECT message_index FROM messages WHERE `message_index`='{$message_index}' LIMIT 1");
     if($results){
         if($results->num_rows==0){
@@ -580,6 +583,7 @@ function updateAssetPrice( $asset=null ){
         return;
     // Lookup last order match for XCP
     $sql = "SELECT
+                m.block_index,
                 m.forward_asset_id,
                 m.forward_quantity,
                 m.backward_asset_id,
@@ -590,8 +594,8 @@ function updateAssetPrice( $asset=null ){
                 ((m.forward_asset_id=2 AND m.backward_asset_id='{$asset_id}') OR
                 ( m.forward_asset_id='{$asset_id}' AND m.backward_asset_id=2)) AND
                 m.status='completed'
-            ORDER BY 
-                m.block_index DESC 
+            ORDER BY
+                m.block_index DESC
             LIMIT 1";
     $results  = $mysqli->query($sql);
     if($results){
@@ -603,7 +607,8 @@ function updateAssetPrice( $asset=null ){
             $xxx_qty   = ($divisible) ? number_format($xxx_amt * 0.00000001,8,'.','') : number_format($xxx_amt,0,'.','');
             $price     = number_format($xcp_qty / $xxx_qty,8,'.','');
             $price_int = number_format($price * 100000000,0,'.','');
-            $results   = $mysqli->query("UPDATE assets SET xcp_price='{$price_int}' WHERE id='{$asset_id}'");
+            $xcp_block = intval($data['block_index']);
+            $results   = $mysqli->query("UPDATE assets SET xcp_price='{$price_int}', xcp_price_block='{$xcp_block}' WHERE id='{$asset_id}'");
             if(!$results)
                 byeLog('Error updating XCP price for asset ' . $asset);
         }
@@ -707,9 +712,10 @@ function updateAssetPrice( $asset=null ){
     }
     // Update BTC price to use most recent transaction price (block_index)
     if(count($btc_prices)){
-        ksort($btc_prices);
-        $price_int = array_pop($btc_prices);
-        $results   = $mysqli->query("UPDATE assets SET btc_price='{$price_int}' WHERE id='{$asset_id}'");
+        $btc_block = max(array_keys($btc_prices));
+        $price_int = $btc_prices[$btc_block];
+        $btc_block = intval($btc_block);
+        $results   = $mysqli->query("UPDATE assets SET btc_price='{$price_int}', btc_price_block='{$btc_block}' WHERE id='{$asset_id}'");
         if(!$results)
             byeLog('Error updating BTC price for asset ' . $asset);
     }
