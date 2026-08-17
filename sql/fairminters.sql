@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS fairminters;
 CREATE TABLE fairminters (
+    pk_id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     -- tx_hash                  TEXT,
     tx_hash_id                  INTEGER UNSIGNED,
     tx_index                    INTEGER UNSIGNED,
@@ -32,7 +33,10 @@ CREATE TABLE fairminters (
     commission                  VARCHAR(250),
     paid_quantity               VARCHAR(250),
     max_mint_per_address        VARCHAR(250),
-    mime_type                   VARCHAR(250) DEFAULT 'text/plain'
+    mime_type                   VARCHAR(250) DEFAULT 'text/plain',
+    -- lp_asset                 TEXT,
+    lp_asset_id                 INTEGER UNSIGNED, -- id of record in assets table
+    pool_quantity               VARCHAR(250)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE INDEX tx_hash_id      ON fairminters (tx_hash_id);
@@ -40,5 +44,6 @@ CREATE INDEX block_index     ON fairminters (block_index);
 CREATE INDEX source_id       ON fairminters (source_id);
 CREATE INDEX asset_id        ON fairminters (asset_id);
 CREATE INDEX asset_parent_id ON fairminters (asset_parent_id);
+CREATE INDEX lp_asset_id     ON fairminters (lp_asset_id);
 CREATE INDEX asset_longname  ON fairminters (asset_longname);
 CREATE INDEX status          ON fairminters (status);
