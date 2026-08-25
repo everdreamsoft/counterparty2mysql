@@ -109,7 +109,7 @@ if($rollback){
         if(!$results)
             byeLog("Error while trying to rollback {$table} table to block {$block_index}");
     }
-    byeLog("Rollback to block {$block_index} complete.");
+    byeLog("Rollback to block {$block_index} complete.", null, 0);
 }
 
 // If no block given, load last block from state file, or use first block with CP tx
@@ -210,6 +210,11 @@ while($block <= $current){
     // Doing this first ensures that address balances are correct immediately
     $counter=0 ;
     if($updateBalances){
+        // A block that credits thousands of addresses at once (a dividend) would
+        // otherwise cost one API request per address and take hours to parse.
+        // Sweep the block's assets up front when that is cheaper and answer every
+        // lookup below from memory. A no-op on normal blocks.
+        primeBalanceCache($addresses, array_keys($assets));
         foreach($addresses as $address => $address_id){
             echo "Loop through addresses  \n  $counter of ".count($addresses);
             $counter++ ;
@@ -222,6 +227,8 @@ while($block <= $current){
                 continue;
             updateAddressBalances($address, array_keys($assets));
         }
+        // Never let one block's cache answer for the next
+        clearBalanceCache();
     }
     $counter = 0 ;
     // Loop through the messages and create/update the counterparty tables
